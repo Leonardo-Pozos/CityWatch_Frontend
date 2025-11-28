@@ -1,0 +1,31 @@
+/* Home.css */
+
+/* 1. Quitamos márgenes por defecto del navegador */
+body, html {
+    margin: 0;
+    padding: 0;
+    overflow: hidden; /* Evita scrollers dobles */
+}
+
+/* 2. El contenedor padre ocupa toda la pantalla */
+.home-page {
+    position: relative; /* Necesario para que el mapa absoluto se posicione respecto a esto */
+    height: 100vh;
+    width: 100vw;
+}
+
+/* 3. El mapa DEBE tener altura explícita */
+.map-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%; /* Ocupa el 100% del padre (.home-page) */
+    width: 100%;
+}
+
+/* 4. Ajuste para que el Navbar se vea ENCIMA del mapa */
+.navbar {
+    z-index: 10; /* Un número mayor que el mapa (que suele ser 1) */
+    background-color: rgba(13, 110, 253, 0.9) !important; /* Un poco transparente para efecto moderno */
+    backdrop-filter: blur(5px);
+}
