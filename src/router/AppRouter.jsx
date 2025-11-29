@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import Login from "../components/Login";
 import Home from "../components/Home";
 import RegistroDeCuenta from "../components/RegistroDeCuenta";
+import Perfil from "../components/Perfil";
 
 function AppRouter() {
     const [usuario, setUsuario] = useState('')
@@ -40,6 +41,9 @@ function AppRouter() {
                     element={
                         <RegistroDeCuenta onRegister={setUsuario} />
                     } />
+                <Route path="/perfil" element={
+                    usuario ? <Perfil usuario={usuario} /> : <Navigate to="/login" />
+                } />
             </Routes>
         </Router>
     )
