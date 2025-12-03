@@ -23,17 +23,14 @@ const Home = ({ usuario, onLogout }) => {
     const [direccion, setDireccion] = useState('');
     const [popupInfo, setPopupInfo] = useState(null);
     const [showModal, setShowModal] = useState(false);
-
     const [isSelectingLocation, setIsSelectingLocation] = useState(false);
     const [editingId, setEditingId] = useState(null);
     const [nuevoReporteCoords, setNuevoReporteCoords] = useState(null);
     const [tipo, setTipo] = useState('Choque');
     const [descripcion, setDescripcion] = useState('');
     const [showTable, setShowTable] = useState(false);
-
     const [isDrawingPolygon, setIsDrawingPolygon] = useState(false);
     const [polygonCoords, setPolygonCoords] = useState([]);
-
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState([]);
     const [filterTipo, setFilterTipo] = useState('');
@@ -66,6 +63,16 @@ const Home = ({ usuario, onLogout }) => {
         setIsDrawingPolygon(false);
         setIsSelectingLocation(false);
         setPolygonCoords([]);
+        setDireccion('');
+    };
+
+    const startNewReport = () => {
+        setTipo('Choque');
+        setDescripcion('');
+        setDireccion('');
+        setNuevoReporteCoords(null);
+        setEditingId(null);
+        setShowModal(true);
     };
 
     const MapClickHandler = ({ onClick }) => {
@@ -77,45 +84,26 @@ const Home = ({ usuario, onLogout }) => {
         return null;
     };
 
-    const handleOpenModal = () => {
-        setNuevoReporteCoords(null);
-        setTipo('Choque');
-        setDescripcion('');
-        setShowModal(true);
-        setIsDrawingPolygon(false);
-        setPolygonCoords([]);
-    };
-
-    const startSelectingLocation = () => {
-        setShowModal(false);
-        setIsSelectingLocation(true);
-        setIsDrawingPolygon(false);
-    };
-
-    const startDrawingPolygon = () => {
-        setShowModal(false);
-        setIsSelectingLocation(false);
-        setIsDrawingPolygon(true);
-        setPolygonCoords([]);
-    };
-
-    const finishPolygon = async () => {
-        if (polygonCoords.length < 3) {
-            alert("Un polígono debe tener al menos 3 puntos. Intenta de nuevo.");
-            setIsDrawingPolygon(false);
-            setPolygonCoords([]);
-            setShowModal(true);
+    const handleMapClick = async (latlng) => {
+        if (isDrawingPolygon) {
+            setPolygonCoords(prev => [...prev, latlng]);
             return;
         }
 
-        setDireccion("Buscando dirección...");
-        const primerPunto = polygonCoords[0];
-        const nombre = await obtenerNombreUbicacion(primerPunto.lat, primerPunto.lng);
-        setDireccion(nombre);
-
-        setIsDrawingPolygon(false);
-        setTipo('Polígono');
-        setShowModal(true);
+        if (isSelectingLocation) {
+            setNuevoReporteCoords(latlng);
+            setDireccion("Buscando dirección...");
+            const nombre = await obtenerNombreUbicacion(latlng.lat, latlng.lng);
+            setDireccion(nombre);
+            setIsSelectingLocation(false);
+            setShowModal(true);
+        } else {
+            if (!showModal) {
+                setPopupInfo({ latlng, address: "Cargando dirección..." });
+                const nombre = await obtenerNombreUbicacion(latlng.lat, latlng.lng);
+                setPopupInfo({ latlng, address: nombre });
+            }
+        }
     };
 
     const obtenerNombreUbicacion = async (lat, lng) => {
@@ -127,30 +115,6 @@ const Home = ({ usuario, onLogout }) => {
         } catch (error) {
             console.error("Error obteniendo dirección:", error);
             return "Error al obtener ubicación";
-        }
-    };
-
-    const handleMapClick = async (latlng) => {
-        if (isDrawingPolygon) {
-            setPolygonCoords(prev => [...prev, latlng]);
-            return;
-        }
-
-        if (isSelectingLocation) {
-            setPopupInfo(null);
-            setNuevoReporteCoords(latlng);
-            setDireccion("Buscando dirección...");
-            setIsSelectingLocation(false);
-
-            const nombre = await obtenerNombreUbicacion(latlng.lat, latlng.lng);
-            setDireccion(nombre);
-            setShowModal(true);
-        } else {
-            if (!showModal) {
-                setPopupInfo({ latlng, address: "Cargando dirección..." });
-                const nombre = await obtenerNombreUbicacion(latlng.lat, latlng.lng);
-                setPopupInfo({ latlng, address: nombre });
-            }
         }
     };
 
@@ -229,7 +193,7 @@ const Home = ({ usuario, onLogout }) => {
                     const errorData = await res.json();
                     errorMessage = errorData.message || errorData.error || res.statusText;
                 } catch (e) { }
-                alert(`Error al guardar. Detalle: ${errorMessage}`);
+                alert(`Error al guardar o actualizar el reporte. Detalle: ${errorMessage}`);
             }
         } catch (error) {
             alert(`Error de conexión: ${error.message}`);
@@ -272,12 +236,13 @@ const Home = ({ usuario, onLogout }) => {
                     <button
                         className={`btn ${showTable ? 'btn-warning text-dark' : 'btn-light text-primary'} fw-bold shadow-sm me-2`}
                         onClick={() => setShowTable(!showTable)}
+                        title="Ver listado de reportes"
                     >
                         {showTable ? 'Ver Mapa' : 'Ver Reportes'} 📋
                     </button>
 
                     {!isSelectingLocation && !isDrawingPolygon && !showTable && (
-                        <button className='btn btn-light text-primary fw-bold shadow-sm me-2' onClick={handleOpenModal}>
+                        <button className='btn btn-light text-primary fw-bold shadow-sm me-2' onClick={startNewReport}>
                             + Reportar
                         </button>
                     )}
@@ -286,6 +251,7 @@ const Home = ({ usuario, onLogout }) => {
                         <button
                             className="btn btn-outline-light border-0"
                             onClick={() => setShowMenu(!showMenu)}
+                            title="Menú"
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="currentColor" viewBox="0 0 16 16">
                                 <path fillRule="evenodd" d="M2.5 12a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5z" />
@@ -299,7 +265,9 @@ const Home = ({ usuario, onLogout }) => {
                                     <strong>{usuario?.name}</strong>
                                 </div>
 
-                                <Link to="/perfil" className="dropdown-item py-2">👤 Mi Perfil / Mis Reportes</Link>
+                                <Link to="/perfil" className="dropdown-item py-2">
+                                    👤 Mi Perfil / Mis Reportes
+                                </Link>
 
                                 <div className="dropdown-divider"></div>
 
@@ -316,19 +284,8 @@ const Home = ({ usuario, onLogout }) => {
             </nav>
 
             <div style={{ flex: 1, position: 'relative' }}>
-
                 {/* Buscador flotante */}
-                <div style={{
-                    position: 'absolute',
-                    top: 10,
-                    left: 10,
-                    zIndex: 1100,
-                    width: '250px',
-                    background: 'white',
-                    padding: '8px',
-                    borderRadius: '8px',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.3)'
-                }}>
+                <div style={{ position: 'absolute', top: 10, left: 10, zIndex: 1100, width: '250px', background: 'white', padding: '8px', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>
                     <input
                         type="text"
                         className="form-control mb-2"
@@ -357,7 +314,7 @@ const Home = ({ usuario, onLogout }) => {
                                     onClick={() => {
                                         if (rep.location.type === 'Point') {
                                             mapRef.current.setView([rep.location.coordinates[1], rep.location.coordinates[0]], 16);
-                                        } else {
+                                        } else if (rep.location.type === 'Polygon') {
                                             const coords = rep.location.coordinates[0];
                                             const centerLat = coords.reduce((sum, c) => sum + c[1], 0) / coords.length;
                                             const centerLng = coords.reduce((sum, c) => sum + c[0], 0) / coords.length;
@@ -387,18 +344,17 @@ const Home = ({ usuario, onLogout }) => {
                     </div>
                 )}
 
-                {/* Indicadores de selección */}
                 {isSelectingLocation && (
                     <div className="alert alert-info position-absolute top-0 start-50 translate-middle-x mt-3 shadow fw-bold text-center" style={{ zIndex: 1001 }}>
                         📍 Haz clic en el mapa para ubicar el incidente
                         <br />
-                        <button className='btn btn-sm btn-secondary mt-1' onClick={() => { setIsSelectingLocation(false); setShowModal(true); }}>Cancelar</button>
+                        <button className='btn btn-sm btn-secondary mt-1' onClick={() => { setIsSelectingLocation(false); }}>Cancelar</button>
                     </div>
                 )}
 
                 {isDrawingPolygon && (
                     <div className="alert alert-warning position-absolute top-0 start-50 translate-middle-x mt-3 shadow fw-bold text-center" style={{ zIndex: 1001 }}>
-                        📐 Haz clic para añadir puntos. Puntos: <b>{polygonCoords.length}</b>
+                        📐 Haz clic para añadir puntos. Puntos: **{polygonCoords.length}**
                         <br />
                         {polygonCoords.length >= 3 && (
                             <button className='btn btn-sm btn-success mt-1 me-2' onClick={finishPolygon}>Finalizar Polígono</button>
@@ -428,9 +384,6 @@ const Home = ({ usuario, onLogout }) => {
                         </Popup>
                     )}
 
-                    {/** ============================
-                     *       MARCADORES ACTUALIZADOS  
-                     * ============================ */}
                     {reportes.map(rep => (
                         rep.location.type === 'Point' ? (
                             <Marker
@@ -441,7 +394,6 @@ const Home = ({ usuario, onLogout }) => {
                                     <div className="fw-bold">{rep.type}</div>
                                     <div>{rep.address}</div>
                                     <div>{rep.description}</div>
-
                                     <button
                                         className="btn btn-sm btn-primary mt-2"
                                         onClick={() => handleStartEdit(rep)}
@@ -461,15 +413,18 @@ const Home = ({ usuario, onLogout }) => {
                                         <div className="fw-bold">{rep.type}</div>
                                         <div>{rep.address}</div>
                                         <div>{rep.description}</div>
-
-                                        <button className="btn btn-sm btn-secondary mt-2" disabled>
-                                            No editable
+                                        <button
+                                            className="btn btn-sm btn-primary mt-2"
+                                            onClick={() => handleStartEdit(rep)}
+                                        >
+                                            Editar
                                         </button>
                                     </Popup>
                                 </Polygon>
                             )
                         )
                     ))}
+
 
                     {isDrawingPolygon && polygonCoords.length > 0 && (
                         <Polygon positions={polygonCoords.map(p => [p.lat, p.lng])} pathOptions={{ color: 'orange', dashArray: '5,5' }} />
@@ -490,7 +445,12 @@ const Home = ({ usuario, onLogout }) => {
                                 <div className="modal-body">
                                     <div className="mb-2">
                                         <label className="form-label">Tipo</label>
-                                        <select className="form-select" value={tipo} onChange={e => setTipo(e.target.value)} disabled={tipo === 'Polígono'}>
+                                        <select
+                                            className="form-select"
+                                            value={tipo}
+                                            onChange={e => setTipo(e.target.value)}
+                                            disabled={tipo === 'Polígono'}
+                                        >
                                             <option value="Choque">Choque</option>
                                             <option value="Tráfico">Tráfico</option>
                                             <option value="Obra">Obra</option>
@@ -501,12 +461,28 @@ const Home = ({ usuario, onLogout }) => {
 
                                     <div className="mb-2">
                                         <label className="form-label">Descripción</label>
-                                        <textarea className="form-control" value={descripcion} onChange={e => setDescripcion(e.target.value)} required />
+                                        <textarea
+                                            className="form-control"
+                                            value={descripcion}
+                                            onChange={e => setDescripcion(e.target.value)}
+                                            required
+                                        />
                                     </div>
 
                                     <div className="mb-2">
                                         <label className="form-label">Dirección</label>
-                                        <input type="text" className="form-control" value={direccion} readOnly />
+                                        <input
+                                            type="text"
+                                            className="form-control"
+                                            value={direccion}
+                                            readOnly
+                                            onClick={() => {
+                                                setShowModal(false);
+                                                setIsSelectingLocation(true);
+                                            }}
+                                            style={{ cursor: 'pointer', backgroundColor: '#f8f9fa' }}
+                                        />
+                                        <small className="text-muted">Haz clic para seleccionar ubicación en el mapa</small>
                                     </div>
                                 </div>
                                 <div className="modal-footer">
